@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 import routes from "./routes/router";
 import Loader from "./components/loader";
 import ErrorFeedback from "./components/errorfeedback";
+import DevModeBanner from "./components/DevModeBanner";
 import config from "./config";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
 
   return (
     <>
+      <DevModeBanner />
       <Suspense
         fallback={
           <div style={{

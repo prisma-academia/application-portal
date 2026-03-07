@@ -5,6 +5,9 @@ const getAbsoluteLogoUrl = (url) => {
 };
 
 const config = {
+  isDevelopment:
+    process.env.REACT_APP_MODE === "development" ||
+    process.env.NODE_ENV === "development",
   baseUrl:
     process.env.REACT_APP_API_URL || "http://localhost:4000",
   appName:
