@@ -24,12 +24,18 @@ const ApplicationPage = () => {
   });
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
   const { handleFetchResponse, handleFetchError } = useNetworkErrorHandler();
 
   const getFormStatus = async () => {
     try {
+      const params = new URLSearchParams();
+      if (user?.id) params.set("id", user.id);
+      if (user?.email) params.set("email", user.email);
+      const query = params.toString();
+      const url = `${configs.baseUrl}/api/v1/application/single-form${query ? `?${query}` : ""}`;
       const response = await fetch(
-        `${configs.baseUrl}/api/v1/application/single-form`,
+        url,
         {
           method: "GET",
           headers: {
