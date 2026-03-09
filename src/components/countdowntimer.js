@@ -3,7 +3,7 @@ import * as ReactCountdown from "react-countdown";
 
 const Countdown = ReactCountdown?.default ?? ReactCountdown;
 
-const CountdownTimer = ({ preference }) => {
+const CountdownTimer = ({ session }) => {
   const renderer = ({ days, hours, minutes, seconds, completed }) => {
     if (completed) {
       return (
@@ -54,7 +54,7 @@ const CountdownTimer = ({ preference }) => {
     }
   };
 
-  const formattedDate = new Date(preference?.closingDate || 0).toLocaleString('en-US', {
+  const formattedDate = new Date(session?.closingDate || 0).toLocaleString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -82,7 +82,7 @@ const CountdownTimer = ({ preference }) => {
         <h2 className="text-lg font-semibold text-slate-800">Application Deadline</h2>
       </div>
       
-      <Countdown date={new Date(preference?.closingDate || 0)} renderer={renderer} />
+      <Countdown date={new Date(session?.closingDate || 0)} renderer={renderer} />
       
       <div className="mt-4 pt-4 border-t border-slate-100">
         <h6 className="text-sm font-medium text-slate-700 mb-1">Closing Date:</h6>

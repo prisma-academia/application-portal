@@ -81,9 +81,9 @@ const ApplicationPage = () => {
     queryFn: getFormStatus,
   });
 
-  const getPreference = async () => {
+  const getSession = async () => {
     try {
-      const response = await fetch(`${configs.baseUrl}/api/v1/preference`, {
+      const response = await fetch(`${configs.baseUrl}/api/v1/sessions/active`, {
         method: "GET",
         redirect: "follow",
         headers: {
@@ -93,7 +93,7 @@ const ApplicationPage = () => {
       });
 
       // Handle network errors
-      if (handleFetchResponse(response, getPreference)) {
+      if (handleFetchResponse(response, getSession)) {
         return null;
       }
 
@@ -108,22 +108,22 @@ const ApplicationPage = () => {
       }
       
       // Handle API errors
-      handleFetchError(new Error(result.message), getPreference);
+      handleFetchError(new Error(result.message), getSession);
       return null;
     } catch (error) {
       // Handle fetch errors
-      handleFetchError(error, getPreference);
+      handleFetchError(error, getSession);
       return null;
     }
   };
   
   const {
-    data: preference,
-    isLoading: prefrenceLoading,
-    error: preferenceError,
+    data: session,
+    isLoading: sessionLoading,
+    error: sessionError,
   } = useQuery({
-    queryKey: ["preference"],
-    queryFn: getPreference,
+    queryKey: ["session"],
+    queryFn: getSession,
   });
 
   const getProgrammes = async () => {
@@ -170,7 +170,7 @@ const ApplicationPage = () => {
         <ul className="mt-4 list-disc space-y-2 text-slate-700">
           <li className="ml-4 flex items-center">
             <span className="mr-2 text-pink-600">•</span>
-            <span>Application Fee: <span className="font-semibold">₦{preference?.price}</span></span>
+            <span>Application Fee: <span className="font-semibold">Varies by programme</span></span>
           </li>
           <li className="ml-4 flex items-center">
             <span className="mr-2 text-pink-600">•</span>
@@ -186,7 +186,7 @@ const ApplicationPage = () => {
           </li>
           <li className="ml-4 flex items-center">
             <span className="mr-2 text-pink-600">•</span>
-            <span>Application Closes: <span className="font-semibold">{preference?.closingDate}</span></span>
+            <span>Application Closes: <span className="font-semibold">{session?.closingDate}</span></span>
           </li> */}
         </ul>
         <p className="mt-4 text-slate-700 bg-pink-50 p-3 rounded-md border-l-4 border-pink-500">
@@ -236,11 +236,11 @@ const ApplicationPage = () => {
 
           <div className="w-full lg:w-1/4 space-y-8">
             <div className="bg-white rounded-2xl shadow-sm p-6">
-              {prefrenceLoading ? (
+              {sessionLoading ? (
                 <div className="flex justify-center py-4">
                   <Loader />
                 </div>
-              ) : preferenceError ? (
+              ) : sessionError ? (
                 <div className="text-center py-4">
                   <div className="text-pink-600 mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,7 +256,7 @@ const ApplicationPage = () => {
                   </button>
                 </div>
               ) : (
-                <CountdownTimer preference={preference} />
+                <CountdownTimer session={session} />
               )}
             </div>
 
@@ -281,7 +281,7 @@ const ApplicationPage = () => {
                   </button>
                 </div>
               ) : form ? (
-                <PaymentApplication form={form} preference={preference} programmes={programmes} />
+                <PaymentApplication form={form} programmes={programmes} />
               ) : (
                 <StartApplication programmes={programmes} />
               )}

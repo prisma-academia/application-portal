@@ -44,7 +44,7 @@ function AdminView() {
   }
 
   const { data: analytics } = useQuery({
-    queryKey: ["preference"],
+    queryKey: ["analytics"],
     queryFn: getAnalytics,
   });
   async function getAnalytics() {
@@ -210,7 +210,7 @@ function AdminView() {
 
   return (
     <div>
-      <PreferenceModel />
+      <SessionModal />
       <div className="bg-base-100 flex justify-between align-center items-center mb-10 mt-5">
         <div className="stats stats-vertical lg:stats-horizontal shadow">
           <div className="stat">
@@ -263,41 +263,36 @@ function AdminView() {
 
 export default AdminView;
 
-const PreferenceModel = () => {
+const SessionModal = () => {
   const token = useAuthStore((state) => state.token);
+  const apiKey = process.env.REACT_APP_ADMIN_API_KEY || token;
 
-  const formik = useFormik({
-    initialValues: {
-      price: 1000000,
-      closingDate: "",
-      announcement: "",
-    },
-    validationSchema: Yup.object({
-      price: Yup.number()
-        .required("Price is required")
-        .min(0, "Price must be positive"),
-      closingDate: Yup.date().required("Closing Date is required"),
-      announcement: Yup.string().required("Announcement is required"),
-    }),
-    onSubmit: async (values, { setSubmitting, resetForm }) => {
-      try {
-        mutate(values);
-        resetForm();
-        document.getElementById("my_modal_1").close();
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setSubmitting(false);
+  const { data: activeSession } = useQuery({
+    queryKey: ["session"],
+    queryFn: async () => {
+      const response = await fetch(`${configs.baseUrl}/api/v1/sessions/active`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(errorMessage);
       }
+      const result = await response.json();
+      if (result.ok) return result.data;
+      throw new Error(result.message);
     },
   });
 
-  const putPreference = async (credentials) => {
-    const response = await fetch(`${configs.baseUrl}/api/v1/preference`, {
+  const putSession = async (sessionId, credentials) => {
+    const response = await fetch(`${configs.baseUrl}/api/v1/sessions/${sessionId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        authorization: `Bearer ${token}`,
+        "x-api-key": apiKey,
       },
       body: JSON.stringify(credentials),
     });
@@ -314,16 +309,39 @@ const PreferenceModel = () => {
     throw new Error(result.message);
   };
 
-  const { data, mutate, isError, isPending, failureReason } = useMutation({
-    mutationFn: putPreference,
-    onSuccess: () =>
-      QueryClient.invalidateQueries({ queryKey: ["preference"] }),
+  const { mutateAsync: putSessionMutation } = useMutation({
+    mutationFn: ({ sessionId, body }) => putSession(sessionId, body),
+    onSuccess: () => QueryClient.invalidateQueries({ queryKey: ["session"] }),
+  });
+
+  const formik = useFormik({
+    initialValues: {
+      closingDate: activeSession?.closingDate ? new Date(activeSession.closingDate).toISOString().slice(0, 10) : "",
+      announcement: activeSession?.announcement ?? "",
+    },
+    validationSchema: Yup.object({
+      closingDate: Yup.date().required("Closing Date is required"),
+      announcement: Yup.string().required("Announcement is required"),
+    }),
+    enableReinitialize: true,
+    onSubmit: async (values, { setSubmitting, resetForm }) => {
+      try {
+        if (!activeSession?._id) return;
+        await putSessionMutation({ sessionId: activeSession._id, body: values });
+        resetForm();
+        document.getElementById("my_modal_1").close();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setSubmitting(false);
+      }
+    },
   });
 
   return (
     <>
       <MyButton
-        text="Preference"
+        text="Session"
         onClick={() => document.getElementById("my_modal_1").showModal()}
       >
         <svg
@@ -343,24 +361,15 @@ const PreferenceModel = () => {
       </MyButton>
       <dialog id="my_modal_1" className="modal">
         <div className="modal-box">
-          <h3 className="font-bold text-lg">Preference</h3>
+          <h3 className="font-bold text-lg">Session</h3>
           <form onSubmit={formik.handleSubmit} method="dialog">
-            <div className="flex justify-between">
-              <FormInput
-                label="Price"
-                placeholder="Enter price"
-                formik={formik}
-                name="price"
-                type="number"
-              />
-              <FormInput
-                label="Closing Date"
-                placeholder="Select closing date"
-                formik={formik}
-                name="closingDate"
-                type="date"
-              />
-            </div>
+            <FormInput
+              label="Closing Date"
+              placeholder="Select closing date"
+              formik={formik}
+              name="closingDate"
+              type="date"
+            />
             <FormInput
               label="Announcement"
               placeholder="Enter announcement"
@@ -376,7 +385,7 @@ const PreferenceModel = () => {
               >
                 Close
               </MyButton>
-              <MyButton type="submit" disabled={formik.isSubmitting}>
+              <MyButton type="submit" disabled={formik.isSubmitting || !activeSession?._id}>
                 Update
               </MyButton>
             </div>

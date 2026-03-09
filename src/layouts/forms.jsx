@@ -12,8 +12,8 @@ function FormsLayout({ children }) {
   const { token } = useAuthStore();
   const { setAlert } = useSnackStore();
 
-  const getPreference = async () => {
-    const response = await fetch(`${configs.baseUrl}/api/v1/preference`, {
+  const getSession = async () => {
+    const response = await fetch(`${configs.baseUrl}/api/v1/sessions/active`, {
       method: "GET",
       redirect: "follow",
       headers: {
@@ -37,21 +37,22 @@ function FormsLayout({ children }) {
     throw new Error(result.message);
   };
   const {
-    data: preference,
-    isLoading: prefrenceLoading,
-    error: preferenceError,
-    status: prefrenceStatus,
+    data: session,
+    isLoading: sessionLoading,
+    error: sessionError,
+    status: sessionStatus,
   } = useQuery({
-    queryKey: ["preference"],
-    queryFn: getPreference,
+    queryKey: ["session"],
+    queryFn: getSession,
   });
 
-  if (prefrenceLoading) {
-    <h3>Loading prefrences</h3>;
+  if (sessionLoading) {
+    return <h3>Loading session...</h3>;
   }
-  if (preference?.minutesLeft < 1) {
-    setAlert({variant:"danger", message:"Application Deadline"})
+  if (session?.minutesLeft < 1) {
+    setAlert({ variant: "danger", message: "Application Deadline" });
     navigate("/");
+    return null;
   }
   useEffect(() => {
     setPageHeader(pathname.split("/")[2]); // Updated to get the correct part of the path

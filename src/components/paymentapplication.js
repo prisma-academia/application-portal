@@ -11,20 +11,20 @@ const getProgrammeDisplay = (form, programmes = []) => {
   return programmes.find((prog) => prog._id === p)?.name ?? p;
 };
 
-const getApplicationFee = (form, preference, programmes = []) => {
+const getApplicationFee = (form, programmes = []) => {
   const p = form?.programme;
   if (typeof p === "object" && p.price != null) return p.price;
   const id = typeof p === "string" ? p : p?._id;
   const programme = id ? programmes.find((prog) => prog._id === id) : null;
   if (programme?.price != null) return programme.price;
-  return preference?.price ?? "—";
+  return "—";
 };
 
-const PaymentApplication = ({ form, preference, programmes = [] }) => {
+const PaymentApplication = ({ form, programmes = [] }) => {
   const token = useAuthStore((state) => state.token);
   const navigate = useNavigate();
   const programmeName = getProgrammeDisplay(form, programmes);
-  const applicationFee = getApplicationFee(form, preference, programmes);
+  const applicationFee = getApplicationFee(form, programmes);
 
   const getPaymentLink = async () => {
     const response = await fetch(`${configs.baseUrl}/api/v1/application/payment-link`, {
