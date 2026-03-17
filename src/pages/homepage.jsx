@@ -9,9 +9,10 @@ import configs from "../config";
 import PaymentApplication from "../components/paymentapplication";
 import { useQuery } from "@tanstack/react-query";
 import Loader from "../components/loader";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import AlertModal from "../components/AlertModal";
 import useNetworkErrorHandler from "../hooks/useNetworkErrorHandler";
+import { useAdmissionOffer } from "../hooks/useAdmissionOffer";
 
 const ApplicationPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(
@@ -146,6 +147,13 @@ const ApplicationPage = () => {
     queryFn: getProgrammes,
   });
 
+  const {
+    data: admissionOffer,
+    isLoading: admissionLoading,
+    isError: admissionError,
+    refetch: refetchAdmission,
+  } = useAdmissionOffer();
+
   const closeModal = () => {
     localStorage.setItem("modalInfo", "true");
     setIsModalOpen(false);
@@ -257,6 +265,51 @@ const ApplicationPage = () => {
                 </div>
               ) : (
                 <CountdownTimer session={session} />
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-pink-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="text-lg font-semibold text-slate-800">Admission Status</h2>
+              </div>
+              {admissionLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader />
+                </div>
+              ) : admissionError ? (
+                <div className="text-center py-4">
+                  <div className="text-pink-600 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-700 text-sm">Unable to load admission status</p>
+                  <button
+                    onClick={() => refetchAdmission()}
+                    className="mt-2 text-xs px-3 py-1 bg-pink-100 text-pink-700 rounded hover:bg-pink-200 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : !admissionOffer ? (
+                <p className="text-slate-600 text-sm text-center py-2">No admission offer yet</p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-slate-700">
+                    {admissionOffer.status === "accepted"
+                      ? "Admission accepted"
+                      : "You have an offer — Pending acceptance"}
+                  </p>
+                  <Link
+                    to="/admission"
+                    className="inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    View details →
+                  </Link>
+                </div>
               )}
             </div>
 
