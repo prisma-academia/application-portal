@@ -13,6 +13,7 @@ import { useNavigate, Link } from "react-router-dom";
 import AlertModal from "../components/AlertModal";
 import useNetworkErrorHandler from "../hooks/useNetworkErrorHandler";
 import { useAdmissionOffer } from "../hooks/useAdmissionOffer";
+import { useActiveSession } from "../hooks/use-active-session";
 
 const ApplicationPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(
@@ -82,49 +83,14 @@ const ApplicationPage = () => {
     queryFn: getFormStatus,
   });
 
-  const getSession = async () => {
-    try {
-      const response = await fetch(`${configs.baseUrl}/api/v1/sessions/active`, {
-        method: "GET",
-        redirect: "follow",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Handle network errors
-      if (handleFetchResponse(response, getSession)) {
-        return null;
-      }
-
-      if (response.status === 401) {
-        navigate("/logout");
-        return null;
-      }
-
-      const result = await response.json();
-      if (result.ok) {
-        return result.data;
-      }
-      
-      // Handle API errors
-      handleFetchError(new Error(result.message), getSession);
-      return null;
-    } catch (error) {
-      // Handle fetch errors
-      handleFetchError(error, getSession);
-      return null;
-    }
-  };
-  
   const {
-    data: session,
+    session,
     isLoading: sessionLoading,
     error: sessionError,
-  } = useQuery({
-    queryKey: ["session"],
-    queryFn: getSession,
+    isClosed,
+  } = useActiveSession({
+    token,
+    onUnauthorized: () => navigate("/logout"),
   });
 
   const getProgrammes = async () => {
@@ -263,8 +229,13 @@ const ApplicationPage = () => {
                     Retry
                   </button>
                 </div>
-              ) : (
+              ) : session && !isClosed ? (
                 <CountdownTimer session={session} />
+              ) : (
+                <div className="text-center py-4">
+                  <h3 className="text-lg font-semibold text-slate-800 mb-1">Application Closed</h3>
+                  <p className="text-sm text-slate-600">The application period has ended or no session is active</p>
+                </div>
               )}
             </div>
 

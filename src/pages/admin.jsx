@@ -9,7 +9,8 @@ import * as Yup from "yup";
 import { useAuthStore } from "../store/auth";
 import MyButton from "../components/button";
 import FormInput from "../components/forminput";
-import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useActiveSession } from "../hooks/use-active-session";
 import millify from "millify";
 import config from "../config";
 import configs from "../config";
@@ -266,26 +267,8 @@ export default AdminView;
 const SessionModal = () => {
   const token = useAuthStore((state) => state.token);
   const apiKey = process.env.REACT_APP_ADMIN_API_KEY || token;
-
-  const { data: activeSession } = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const response = await fetch(`${configs.baseUrl}/api/v1/sessions/active`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        throw new Error(errorMessage);
-      }
-      const result = await response.json();
-      if (result.ok) return result.data;
-      throw new Error(result.message);
-    },
-  });
+  const queryClient = useQueryClient();
+  const { session: activeSession } = useActiveSession({ token });
 
   const putSession = async (sessionId, credentials) => {
     const response = await fetch(`${configs.baseUrl}/api/v1/sessions/${sessionId}`, {
@@ -311,7 +294,7 @@ const SessionModal = () => {
 
   const { mutateAsync: putSessionMutation } = useMutation({
     mutationFn: ({ sessionId, body }) => putSession(sessionId, body),
-    onSuccess: () => QueryClient.invalidateQueries({ queryKey: ["session"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["activeSession"] }),
   });
 
   const formik = useFormik({
