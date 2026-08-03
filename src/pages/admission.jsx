@@ -3,10 +3,71 @@ import { useAdmissionOffer } from "../hooks/useAdmissionOffer";
 import configs from "../config";
 import { useAuthStore } from "../store/auth";
 import Loader from "../components/loader";
+import { showNetworkError } from "../components/errorfeedback";
 
 const AdmissionStatusPage = () => {
   const { user, token } = useAuthStore((state) => state);
   const { data: admission, isLoading, isError, error, refetch } = useAdmissionOffer();
+  const [isDownloading, setIsDownloading] = React.useState(false);
+
+  // The letter route is authenticated. A plain window.location navigation cannot carry
+  // the Authorization header (and putting the token in the query string would leak it
+  // into the server's request log), so fetch the PDF and save it from a blob instead.
+  const downloadAdmissionLetter = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await fetch(
+        `${configs.baseUrl}/api/v1/admission/pdf/${admission._id}`,
+        { headers: { authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) {
+        let message = "Could not download the admission letter.";
+        if (response.status === 401) {
+          message = "Your session has expired. Please log in again.";
+        } else {
+          try {
+            const body = await response.json();
+            if (body?.message) message = body.message;
+          } catch (e) {
+            // non-JSON error body; keep the generic message
+          }
+        }
+        showNetworkError(message, downloadAdmissionLetter);
+        return;
+      }
+
+      // The API names the file; fall back if the header is missing (it is only readable
+      // cross-origin because the API exposes Content-Disposition).
+      const disposition = response.headers.get("content-disposition");
+      const match = disposition && /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+      let fileName = `${configs.appName} admission letter.pdf`;
+      if (match) {
+        try {
+          fileName = decodeURIComponent(match[1]);
+        } catch (e) {
+          fileName = match[1]; // a stray % makes it un-decodable; use it verbatim
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Revoking immediately cancels the save in some browsers.
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      showNetworkError(
+        "Could not reach the server. Please check your connection and try again.",
+        downloadAdmissionLetter
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const programmeName =
     admission?.programme && typeof admission.programme === "object"
@@ -144,21 +205,20 @@ const AdmissionStatusPage = () => {
               <h3 className="text-sm font-semibold text-slate-800 mt-3">Downloads</h3>
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() =>
-                    (window.location.href = `${configs.baseUrl}/api/v1/admission/pdf/${admission._id}`)
-                  }
-                  className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  onClick={downloadAdmissionLetter}
+                  disabled={isDownloading}
+                  className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Admission Letter
+                  {isDownloading ? "Preparing…" : "Admission Letter"}
                 </button>
-                <button
+                {/* <button
                   onClick={() =>
                     (window.location.href = `${configs.baseUrl}/api/v1/admission/bond/${admission._id}`)
                   }
                   className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Bond/Acceptance Form
-                </button>
+                </button> */}
                 <button
                   onClick={() =>
                     (window.location.href = `${configs.baseUrl}/api/v1/admission/fees/${admission._id}`)
