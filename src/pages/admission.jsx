@@ -211,14 +211,14 @@ const AdmissionStatusPage = () => {
                 >
                   {isDownloading ? "Preparing…" : "Admission Letter"}
                 </button>
-                {/* <button
+                <button
                   onClick={() =>
                     (window.location.href = `${configs.baseUrl}/api/v1/admission/bond/${admission._id}`)
                   }
                   className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Bond/Acceptance Form
-                </button> */}
+                </button>
                 <button
                   onClick={() =>
                     (window.location.href = `${configs.baseUrl}/api/v1/admission/fees/${admission._id}`)
