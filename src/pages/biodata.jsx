@@ -8,15 +8,14 @@ import SelectInput from "../components/selectinput";
 import MyButton from "../components/button";
 import useFormStore from "../store/form";
 import { useAuthStore } from "../store/auth";
-
-const photo_size_limit = 1020000; // 1MB
+import PhotoCapture from "../components/photocapture/PhotoCapture";
 
 function BioData() {
   const updateForm = useFormStore((state) => state.updateForm);
   const user = useAuthStore((state) => state.user);
 
   const navigate = useNavigate();
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string()
@@ -67,8 +66,8 @@ function BioData() {
       .min(5, "Address must be at least 5 characters")
       .max(100, "Address can't be longer than 100 characters")
       .required("Address is required"),
-    photo: Yup.mixed()
-      .required("Invalid photo criteria")
+    photo: Yup.string()
+      .required("Passport photo is required")
   });
 
   const formik = useFormik({
@@ -96,6 +95,8 @@ function BioData() {
     },
   });
 
+  const photoPreview = formik.values.photo;
+
   const handleStateChange = (stateField, lgaField, value) => {
     formik.setFieldValue(stateField, value);
     formik.setFieldValue(lgaField, "");
@@ -104,33 +105,6 @@ function BioData() {
   const selectedState = (field) =>
     stateList.find((item) => item.state === formik.values[field]);
 
-  const handlePhotoChange = (event) => {
-    const file = event.currentTarget.files[0];
-    if (file) {
-      if (
-        file.size <= photo_size_limit &&
-        ["image/jpeg", "image/png", "image/jpg"].includes(file.type)
-      ) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result;
-          setPhotoPreview(base64String);
-          formik.setFieldValue("photo", base64String); // Assign the base64 string to the photo field
-        };
-        reader.readAsDataURL(file); // Convert file to base64 string for preview
-      } else {
-        setPhotoPreview(null);
-        console.log("Photo must be a jpeg, jpg, or png and less than 1MB");
-        formik.setFieldError(
-          "photo",
-          "Photo must be a jpeg, jpg, or png and less than 1MB"
-        );
-      }
-    } else {
-      setPhotoPreview(null);
-    }
-  };
-  
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-3 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
@@ -267,10 +241,10 @@ function BioData() {
                           <img
                             src={photoPreview}
                             alt="Profile Preview"
-                            className="w-full h-full object-cover rounded-full border-4 border-white shadow-sm"
+                            className="w-full h-full object-cover rounded-xl border-4 border-white shadow-sm"
                           />
                         ) : (
-                          <div className="w-full h-full rounded-full bg-slate-200 flex items-center justify-center border-4 border-white shadow-sm">
+                          <div className="w-full h-full rounded-xl bg-slate-200 flex items-center justify-center border-4 border-white shadow-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
@@ -279,27 +253,34 @@ function BioData() {
                       </div>
                       
                       <div className="space-y-3 w-full">
-                        <label className="flex justify-center px-4 py-2 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 cursor-pointer">
+                        <button
+                          type="button"
+                          onClick={() => setPhotoDialogOpen(true)}
+                          className="w-full flex justify-center px-4 py-2 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50"
+                        >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          {photoPreview ? 'Change Photo' : 'Upload Photo'}
-                          <input
-                            type="file"
-                            name="photo"
-                            accept=".jpg,.jpeg,.png"
-                            onChange={handlePhotoChange}
-                            className="sr-only"
-                          />
-                        </label>
+                          {photoPreview ? 'Change Photo' : 'Add Photo'}
+                        </button>
                         
                         <div className="text-xs text-slate-500">
-                          <p>• JPEG, JPG or PNG format only</p>
-                          <p>• File size must be under 1MB</p>
-                          <p>• Square ratio recommended</p>
+                          <p>• Upload a picture or use your camera</p>
+                          <p>• Recent passport photo, plain background</p>
+                          <p>• You can crop and rotate before saving</p>
                         </div>
                         
-                        {formik.errors.photo && formik.touched.photo && (
+                        <PhotoCapture
+                          open={photoDialogOpen}
+                          onClose={() => setPhotoDialogOpen(false)}
+                          onConfirm={(dataUrl) => {
+                            formik.setFieldValue("photo", dataUrl);
+                            formik.setFieldTouched("photo", true, false);
+                          }}
+                        />
+
+                        {formik.errors.photo && (formik.touched.photo || formik.submitCount > 0) && (
                           <div className="text-pink-600 text-xs flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />

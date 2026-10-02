@@ -17,6 +17,7 @@ const Verify = lazy(() => import("../pages/verify"));
 const ForgotPassword = lazy(() => import("../pages/forgotpassword"));
 const Register = lazy(() => import("../pages/register"));
 const ResetPassword = lazy(() => import("../pages/resetpassword"));
+const PaymentResult = lazy(() => import("../pages/paymentresult"));
 const Biodata = lazy(() => import("../pages/biodata"));
 const Examination = lazy(() => import("../pages/examination"));
 const Olevels = lazy(() => import("../pages/o-levels"));
@@ -54,6 +55,10 @@ const router = createBrowserRouter([
       {
         path: "reset-password",
         element: <ResetPassword />,
+      },
+      {
+        path: "set-password",
+        element: <ResetPassword invite />,
       },
       {
         path: "registration-success",
@@ -128,6 +133,12 @@ const router = createBrowserRouter([
         ]
       }
     ],
+  },
+  {
+    // Paystack return URL; public so emailed payment links work before first login.
+    path: "application/result",
+    element: <PaymentResult />,
+    errorElement: <ErrorPage />,
   },
   {
     path: "*",

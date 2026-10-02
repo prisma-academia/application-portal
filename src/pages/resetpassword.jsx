@@ -3,12 +3,16 @@ import defaultLogo from "../assets/nurselogo.jpeg";
 import config from "../config";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import { useAuthStore } from "../store/auth";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-function ResetPassword() {
+// Also serves /auth/set-password (invite): staff-onboarded applicants choose their
+// first password from the emailed link and are logged straight in.
+function ResetPassword({ invite = false }) {
+  const logIn = useAuthStore((state) => state.logIn);
   const query = useQuery();
   const token = query.get("token");
   const [password, setPassword] = useState("");
@@ -50,7 +54,9 @@ function ResetPassword() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+    if (password.length < 8) {
+      setMessage("Password must be at least 8 characters");
+    } else if (password !== confirmPassword) {
       setMessage("Passwords do not match");
     } else {
       mutate({ password, token });
@@ -58,8 +64,10 @@ function ResetPassword() {
     }
   };
   useEffect(() => {
-    if (data) {
-      alert("Pssaword has been reset Successfully");
+    if (data && invite) {
+      logIn(data.user, data.token);
+    } else if (data) {
+      alert("Password has been reset successfully");
       navigate("/auth/login")
     }
     if (error) {
@@ -79,7 +87,12 @@ function ResetPassword() {
       <div className="mb-8">
         <img src={config.logoUrl || defaultLogo} alt="" className="w-24 mx-auto" />
       </div>
-      <h2 className="text-2xl font-bold text-center mb-4">Reset Password</h2>
+      <h2 className="text-2xl font-bold text-center mb-4">{invite ? "Set Your Password" : "Reset Password"}</h2>
+      {invite && (
+        <p className="text-center text-slate-600 mb-6 text-sm">
+          Choose a password for your application portal account.
+        </p>
+      )}
       <form onSubmit={handleSubmit}>
         <div className="mb-6">
           <label
@@ -122,7 +135,7 @@ function ResetPassword() {
           type="submit"
           className="w-full bg-red-800 text-white p-3 rounded-lg hover:bg-red-700 transition-colors"
         >
-          Reset Password
+          {isPending ? "Saving..." : invite ? "Set Password" : "Reset Password"}
         </button>
       </form>
     </div>
