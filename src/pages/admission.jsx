@@ -69,6 +69,14 @@ const AdmissionStatusPage = () => {
     }
   };
 
+  // Full links to the bond form and fee schedule, resolved by the API from its env
+  // (STATIC_*_URL). The route fallback only covers an API build that predates `documents`.
+  const documents = admission?.documents || {};
+  const bondUrl =
+    documents.bondAcceptanceForm || `${configs.baseUrl}/api/v1/admission/bond/${admission?._id}`;
+  const feesUrl =
+    documents.scheduleOfFees || `${configs.baseUrl}/api/v1/admission/fees/${admission?._id}`;
+
   const programmeName =
     admission?.programme && typeof admission.programme === "object"
       ? admission.programme.name
@@ -211,22 +219,22 @@ const AdmissionStatusPage = () => {
                 >
                   {isDownloading ? "Preparing…" : "Admission Letter"}
                 </button>
-                <button
-                  onClick={() =>
-                    (window.location.href = `${configs.baseUrl}/api/v1/admission/bond/${admission._id}`)
-                  }
-                  className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                <a
+                  href={bondUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium text-center"
                 >
                   Bond/Acceptance Form
-                </button>
-                <button
-                  onClick={() =>
-                    (window.location.href = `${configs.baseUrl}/api/v1/admission/fees/${admission._id}`)
-                  }
-                  className="w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                </a>
+                <a
+                  href={feesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors font-medium text-center"
                 >
                   Schedule of Fees
-                </button>
+                </a>
               </div>
             </div>
           ) : (
