@@ -1,6 +1,12 @@
+// Bump when a logo is replaced in place on storage. The URL stays the same and storage
+// sends no Cache-Control, so without a new ?v= browsers can keep showing the old image.
+const LOGO_VERSION = "20261102";
+
 const getAbsoluteLogoUrl = (url) => {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return `${url}${url.includes("?") ? "&" : "?"}v=${LOGO_VERSION}`;
+  }
   return `${process.env.PUBLIC_URL || ""}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
