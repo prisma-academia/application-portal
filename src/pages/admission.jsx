@@ -5,24 +5,37 @@ import { useAuthStore } from "../store/auth";
 import Loader from "../components/loader";
 import { showNetworkError } from "../components/errorfeedback";
 
+// Documents served by the admissions API need the applicant's token; anything else (a
+// legacy storage link for a document not yet published in Template Studio) is public.
+const isApiDocument = (url) => {
+  try {
+    return new URL(url, window.location.href).pathname.includes("/api/v1/admission/");
+  } catch (e) {
+    return false;
+  }
+};
+
 const AdmissionStatusPage = () => {
   const { user, token } = useAuthStore((state) => state);
   const { data: admission, isLoading, isError, error, refetch } = useAdmissionOffer();
-  const [isDownloading, setIsDownloading] = React.useState(false);
+  // Key of the document being prepared, so only its button shows "Preparing…".
+  const [downloading, setDownloading] = React.useState(null);
 
-  // The letter route is authenticated. A plain window.location navigation cannot carry
-  // the Authorization header (and putting the token in the query string would leak it
-  // into the server's request log), so fetch the PDF and save it from a blob instead.
-  const downloadAdmissionLetter = async () => {
-    setIsDownloading(true);
+  // The admission documents are authenticated. A plain window.location navigation cannot
+  // carry the Authorization header (and putting the token in the query string would leak
+  // it into the server's request log), so fetch the PDF and save it from a blob instead.
+  const downloadPdf = async (doc) => {
+    if (!isApiDocument(doc.url)) {
+      window.open(doc.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const retry = () => downloadPdf(doc);
+    setDownloading(doc.key);
     try {
-      const response = await fetch(
-        `${configs.baseUrl}/api/v1/admission/pdf/${admission._id}`,
-        { headers: { authorization: `Bearer ${token}` } }
-      );
+      const response = await fetch(doc.url, { headers: { authorization: `Bearer ${token}` } });
 
       if (!response.ok) {
-        let message = "Could not download the admission letter.";
+        let message = `Could not download the ${doc.label}.`;
         if (response.status === 401) {
           message = "Your session has expired. Please log in again.";
         } else {
@@ -33,7 +46,7 @@ const AdmissionStatusPage = () => {
             // non-JSON error body; keep the generic message
           }
         }
-        showNetworkError(message, downloadAdmissionLetter);
+        showNetworkError(message, retry);
         return;
       }
 
@@ -41,7 +54,7 @@ const AdmissionStatusPage = () => {
       // cross-origin because the API exposes Content-Disposition).
       const disposition = response.headers.get("content-disposition");
       const match = disposition && /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
-      let fileName = `${configs.appName} admission letter.pdf`;
+      let fileName = `${configs.appName} ${doc.label}.pdf`;
       if (match) {
         try {
           fileName = decodeURIComponent(match[1]);
@@ -62,20 +75,40 @@ const AdmissionStatusPage = () => {
     } catch (err) {
       showNetworkError(
         "Could not reach the server. Please check your connection and try again.",
-        downloadAdmissionLetter
+        retry
       );
     } finally {
-      setIsDownloading(false);
+      setDownloading(null);
     }
   };
 
-  // Full links to the bond form and fee schedule, resolved by the API from its env
-  // (STATIC_*_URL). The route fallback only covers an API build that predates `documents`.
+  // The bond form and fee schedule links come from the API: its own routes once the
+  // documents are published in Template Studio, else the legacy file links. The route
+  // fallback only covers an API build that predates `documents`.
   const documents = admission?.documents || {};
-  const bondUrl =
-    documents.bondAcceptanceForm || `${configs.baseUrl}/api/v1/admission/bond/${admission?._id}`;
-  const feesUrl =
-    documents.scheduleOfFees || `${configs.baseUrl}/api/v1/admission/fees/${admission?._id}`;
+  const downloads = [
+    {
+      key: "letter",
+      label: "admission letter",
+      title: "Admission Letter",
+      url: `${configs.baseUrl}/api/v1/admission/pdf/${admission?._id}`,
+      className: "bg-green-600 hover:bg-green-700",
+    },
+    {
+      key: "bond",
+      label: "bond acceptance form",
+      title: "Bond/Acceptance Form",
+      url: documents.bondAcceptanceForm || `${configs.baseUrl}/api/v1/admission/bond/${admission?._id}`,
+      className: "bg-blue-600 hover:bg-blue-700",
+    },
+    {
+      key: "fees",
+      label: "schedule of fees",
+      title: "Schedule of Fees",
+      url: documents.scheduleOfFees || `${configs.baseUrl}/api/v1/admission/fees/${admission?._id}`,
+      className: "bg-purple-600 hover:bg-purple-700",
+    },
+  ];
 
   const programmeName =
     admission?.programme && typeof admission.programme === "object"
@@ -212,29 +245,17 @@ const AdmissionStatusPage = () => {
               </div>
               <h3 className="text-sm font-semibold text-slate-800 mt-3">Downloads</h3>
               <div className="flex flex-col gap-2">
-                <button
-                  onClick={downloadAdmissionLetter}
-                  disabled={isDownloading}
-                  className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isDownloading ? "Preparing…" : "Admission Letter"}
-                </button>
-                <a
-                  href={bondUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium text-center"
-                >
-                  Bond/Acceptance Form
-                </a>
-                <a
-                  href={feesUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors font-medium text-center"
-                >
-                  Schedule of Fees
-                </a>
+                {downloads.map((doc) => (
+                  <button
+                    key={doc.key}
+                    type="button"
+                    onClick={() => downloadPdf(doc)}
+                    disabled={downloading === doc.key}
+                    className={`w-full px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed ${doc.className}`}
+                  >
+                    {downloading === doc.key ? "Preparing…" : doc.title}
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
